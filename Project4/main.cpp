@@ -26,12 +26,15 @@ rotation_opt; // 1 for fixed angle, 2 for quaternion
 //       the format is {x, y, z, rotation degree on xaxis, rotation degree on yaxis,rotation degree on zaxis}
 // point_num is the number of contritical points
 //       if you would like to add or remove points from qaray or fixaray, please remember to modify this value
+// 
+// 2D flocking system
 // ==================================
 
 //allocate memory for 10 boids
 int boidnum = 10;
-float boid[10][15];
-int dt = 0.01;
+float boid[10][15];//boid matrix
+float bv[10][2];//boid velocity on x and y
+float bf[10][2];//force on boid
 
 float point_num = 6;
 //geometric point for quaternion
@@ -65,7 +68,29 @@ int g_screenHeight = 0;
 // frame index
 int g_frameIndex = 0;
 
-void drawBalls(int bn) {
+void drawBoids(int bn) {
+
+	//update location;
+	//calculate acceleration a = F/m 
+	//assume all boid have weight that = 1;
+	float ax = bf[bn][0] / 1;
+	float ay = bf[bn][1] / 1;
+
+	//calculate velocity
+	bv[bn][0] = bv[bn][0] + ax * 0.01;
+	bv[bn][1] = bv[bn][1] + ay * 0.01;
+	//add gravity
+
+	/***
+	float x = boid[bn][12] + ballv[bn][0] * 0.01;
+	float y = boid[bn][13] + ballv[bn][1] * 0.01;
+
+	ballloc[bn][0] = x;
+	ballloc[bn][1] = y;
+	***/
+	boid[bn][12] += bv[bn][0] * 0.01;
+	boid[bn][13] += bv[bn][1] * 0.01;
+
 	glPushMatrix();
 	M[0] = 1.0f;
 	M[5] = 1.0f;
@@ -152,9 +177,11 @@ void init(void) {
 	for (int i = 0; i < boidnum; i++) {
 		boid[i][12] = rand() % 19 + (-9); //limit by windows width x in range(-9, 9)
 		boid[i][13] = rand() % 15 + (-7);//limit by windows height y in range(-7, 7);
-		boid[i][14] = rand() % 11 + (-25);//limit z in range(-25, -15);
+		boid[i][14] = -25;//make it 2d
+		bv[i][0] = rand() % 11 + (-5); //limit speed on x in range (-5, 5)
+		bv[i][1] = rand() % 11 + (-5); //limit speed on y in range (-5, 5)
 		//std::cout << i;
-		printf("i = %d x = %f y = %f z = %f\n", i, boid[i][12], boid[i][13], boid[i][14]);
+		//printf("i = %d x = %f y = %f z = %f\n", i, boid[i][12], boid[i][13], boid[i][14]);
 	}
 	
 }
@@ -313,7 +340,7 @@ void render(void) {
 	//glTranslatef(0.0, 0.0, -20);
 	//displayTeapot();
 	for (int i = 0; i < 10; i++) {
-		drawBalls(i);
+		drawBoids(i);
 	}
 	// disable lighting
 	glDisable(GL_LIGHT0);
@@ -371,15 +398,6 @@ void timer(int value) {
 // main
 //================================
 int main(int argc, char** argv) {
-	//instruction
-	
-	std::cout << "press 1 for catmull-rom spline \n";
-	std::cout << "press 2 for B-spline\n";
-	std::cin >> spline_opt;
-	std::cout << "press 1 for fixed angle\n";
-	std::cout << "press 2 for quaternion\n";
-	std::cin >> rotation_opt;
-	
 
 	// create opengL window
 	glutInit(&argc, argv);
