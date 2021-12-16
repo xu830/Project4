@@ -31,11 +31,11 @@ rotation_opt; // 1 for fixed angle, 2 for quaternion
 // ==================================
 
 //allocate memory for 10 boids
-int boidnum = 10;
-float boid[10][15] = {0};//boid matrix
-float bv[10][2] = {0};//boid velocity on x and y
-float bf[10][2] = {0};//force on boid
-float rs = 3; // radius of seperation detection. 
+int boidnum = 2;
+float boid[2][15] = {0};//boid matrix
+float bv[2][2] = {0};//boid velocity on x and y
+float bf[2][2] = {0};//force on boid
+float rs = 4; // radius of seperation detection. 
 float rc = 11; // radius of cohesion
 
 float point_num = 6;
@@ -111,30 +111,10 @@ void separate(int bn) {
 			float distx = boid[bn][12] - boid[i][12];
 			float disty = boid[bn][13] - boid[i][13];
 			float distxy = sqrtf(distx * distx + disty * disty);
-			if (distxy < rs) {
-				//add force on x axis
-				if (boid[bn][12] > boid[i][12]) {
-					bf[bn][0] =0;
-					//change velocity according to distxy
-					bv[bn][0] += 0.5 ;
-				}
-				else {
-					bf[bn][0] = 0;
-					//bf[bn][0] -= 0.5;
-					bv[bn][0] -= 0.5;
-				}
-				//add force on y axis
-				if (boid[bn][13] > boid[i][13]) {
-					bf[bn][1] = 0;
-					//bf[bn][1] += 0.5;
-					bv[bn][1] += 0.5;
-
-				}
-				else {
-					bf[bn][1] = 0;
-					//bf[bn][1] -= 0.5;
-					bv[bn][1] -= 0.5;
-				}
+			if (distxy <= rs) {
+				bf[bn][0] += 4 * (boid[bn][12] - boid[i][12] / (boid[bn][12] - boid[i][12]) * (boid[bn][12] - boid[i][12]));
+				bf[bn][1] += 4 * (boid[bn][13] - boid[i][13] / (boid[bn][13] - boid[i][13]) * (boid[bn][13] - boid[i][13]));
+				
 			}
 		}
 
@@ -144,8 +124,8 @@ void separate(int bn) {
 void cohesion(int bn) {
 	//a boid show move toward the average postion of local boids.
 	//local boids: boids in radius cohesion 
-	float targetxt = boid[bn][12];//target x total
-	float targetyt = boid[bn][13];//target y total
+	float targetxt = 0;//target x total
+	float targetyt = 0;//target y total
 	int num = 0;//boids num in cohesion radius
 
 	for (int i = 0; i < boidnum; i++) {
@@ -153,7 +133,6 @@ void cohesion(int bn) {
 		float disty = boid[bn][13] - boid[i][13];
 		float distxy = sqrtf(distx * distx + disty * disty);
 		if (distxy < rc) {
-			//std::cout << i;
 			targetxt += boid[i][12]; //if the boid is in the range, add it's location to the avrage x;
 			targetyt += boid[i][13]; //.. y...
 			num++;
@@ -163,36 +142,10 @@ void cohesion(int bn) {
 	float targetx = targetxt / num;
 	float targety = targetyt / num;
 
-	if (boid[bn][12] > targetx) {
-		//find velocity target
-		float vx = (boid[bn][12] - targetx)/10;
-		float ax = abs(vx - bv[bn][0]) / 10;
-		if (abs(bf[bn][0]) < 10) {
-			bf[bn][0] -= ax;
-		}
+	bf[bn][0] += targetx - boid[bn][12];
+	bf[bn][1] += targety - boid[bn][13];
 
-	}
-	else {
-		float vx = (boid[bn][12] - targetx) / 10;
-		float ax = abs(vx - bv[bn][0]) / 10;
-		if (abs(bf[bn][0]) < 10) {
-			bf[bn][0] += ax;
-		}
-	}
-	if (boid[bn][13] > targety) {
-		float vy = (boid[bn][13] - targety) / 10;
-		float ay = abs(vy - bv[bn][1]) / 10;
-		if (abs(bf[bn][1]) < 10) {
-			bf[bn][1] -= ay;
-		}
-	}
-	else {
-		float vy = (boid[bn][13] - targety) / 10;
-		float ay = abs(vy - bv[bn][1]) / 10;
-		if (abs(bf[bn][1]) < 10) {
-			bf[bn][1] += ay;
-		}
-	}
+
 }
 
 //================================
@@ -218,6 +171,10 @@ void init(void) {
 // update
 //================================
 void update(void) {
+	for (int i = 0; i < boidnum; i++) {
+		bf[i][0] = 0;
+		bf[i][1] = 0;
+	}
 	/***
 	// catmull-rom + fixed
 	if (spline_opt == 1 && rotation_opt == 1) {
@@ -368,8 +325,9 @@ void render(void) {
 	//glTranslatef(0.0, 0.0, -20);
 	//displayTeapot();
 	for (int i = 0; i < boidnum; i++) {
-		separate(i);
+		//printf("before x, bf[0][0] : %f \n", bf[0][0]);
 		cohesion(i);
+		separate(i);
 		drawBoids(i);
 	}
 	// disable lighting
