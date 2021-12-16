@@ -25,7 +25,7 @@ float boid[20][15] = {0};//boid matrix
 float bv[20][2] = {0};//boid velocity on x and y
 float bf[20][2] = {0};//force on boid
 float rs = 2; // radius of seperation detection. 
-float rc = 5; // radius of cohesion
+float rc = 6; // radius of cohesion
 float rv = 3; // radius of velocity match
 float dt = 0.01f; //dt is the spcing to used in the animation
 
@@ -88,7 +88,19 @@ void drawBoids(int bn) {
 	//calculate velocity
 	bv[bn][0] = bv[bn][0] + ax * 0.01;
 	bv[bn][1] = bv[bn][1] + ay * 0.01;
-
+	//printf("velocity x : %f", bv[bn][0]);
+	if (bv[bn][0] > 5) {
+		bv[bn][0] = 5;
+	}
+	if (bv[bn][1] > 5) {
+		bv[bn][1] = 5;
+	}
+	if (bv[bn][0] < -5) {
+		bv[bn][0] = -5;
+	}
+	if (bv[bn][1] < -5) {
+		bv[bn][1] = -5;
+	}
 	//update location
 	boid[bn][12] = boid[bn][12] + bv[bn][0] * 0.01;
 	boid[bn][13] = boid[bn][13] + bv[bn][1] * 0.01;
@@ -119,8 +131,8 @@ void separate(int bn) {
 			if (distxy < rs) {
 				//printf("sep");
 				//the closer two boid to each other, the more force will apply on them
-				bf[bn][0] +=  8 *(boid[bn][12] - boid[i][12] / (boid[bn][12] - boid[i][12]) * (boid[bn][12] - boid[i][12])) ;
-				bf[bn][1] +=  8 *(boid[bn][13] - boid[i][13] / (boid[bn][13] - boid[i][13]) * (boid[bn][13] - boid[i][13])) ;
+				bf[bn][0] +=  10 *(boid[bn][12] - boid[i][12] / (boid[bn][12] - boid[i][12]) * (boid[bn][12] - boid[i][12])) ;
+				bf[bn][1] +=  10 *(boid[bn][13] - boid[i][13] / (boid[bn][13] - boid[i][13]) * (boid[bn][13] - boid[i][13])) ;
 				
 			}
 		}
@@ -149,8 +161,8 @@ void Velocitymatch(int bn) {
 	vx = vxsum / num;
 	vy = vysum / num;
 	//printf("vx: %f, bv[%d][0]: %f", vx, bn, bv[bn][0]);
-	bf[bn][0] += (vx - bv[bn][0]);
-	bf[bn][1] += (vy - bv[bn][1]);
+	bf[bn][0] += (vx - bv[bn][0]) ;
+	bf[bn][1] += (vy - bv[bn][1]) ;
 }
 
 void cohesion(int bn) {
@@ -175,9 +187,14 @@ void cohesion(int bn) {
 	float targety = targetyt / num;
 	//printf("targetx: %f cureentx:%f \n", targetx, boid[bn][12]);
 	//the more far away those boid, ther more they will be attract to the center
-	bf[bn][0] += ( targetx - boid[bn][12])/2;
-	bf[bn][1] +=  (targety - boid[bn][13])/2;
+	bf[bn][0] += ( targetx - boid[bn][12]);
+	bf[bn][1] += ( targety - boid[bn][13]);
 
+}
+
+void chasefood(int bn) {
+	bf[bn][0] += (Mf[12] - boid[bn][12]) ;
+	bf[bn][1] += (Mf[13] - boid[bn][13]) ;
 
 }
 
@@ -191,8 +208,8 @@ void init(void) {
 	Mf[12] = rand() % 19 + (-9);
 	Mf[13] = rand() % 15 + (-7);//limit by windows height y in range(-7, 7);
 	Mf[14] = -30;//make it 2d
-	fvx = rand() % 5 + (-5);
-	fvy = rand() % 5 + (-5);
+	fvx = rand() % 6 + (-3);
+	fvy = rand() % 6 + (-3);
 	
 	//init boids location;
 	
@@ -297,6 +314,7 @@ void render(void) {
 		cohesion(i);
 		separate(i);
 		Velocitymatch(i);
+		chasefood(i);
 		drawBoids(i);
 	}
 	// disable lighting
