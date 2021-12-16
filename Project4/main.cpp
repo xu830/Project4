@@ -88,7 +88,8 @@ void drawBoids(int bn) {
 	//calculate velocity
 	bv[bn][0] = bv[bn][0] + ax * 0.01;
 	bv[bn][1] = bv[bn][1] + ay * 0.01;
-	//printf("velocity x : %f", bv[bn][0]);
+	
+	//speed limit
 	if (bv[bn][0] > 5) {
 		bv[bn][0] = 5;
 	}
@@ -104,7 +105,6 @@ void drawBoids(int bn) {
 	//update location
 	boid[bn][12] = boid[bn][12] + bv[bn][0] * 0.01;
 	boid[bn][13] = boid[bn][13] + bv[bn][1] * 0.01;
-
 
 
 	glPushMatrix();
