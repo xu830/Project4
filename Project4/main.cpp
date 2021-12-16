@@ -12,56 +12,26 @@
 // global variables
 //================================
 
-//option
-int spline_opt, //1 for catmull-rom, 2 for b spline
-rotation_opt; // 1 for fixed angle, 2 for quaternion
 
 
 //==================================
-// INPUT CAN BE MODIFIED HERE!!!
-// CONTROL POINTS INSTRUCTION:
-// qaray is used for stroing control points while using quaternion
-//       the format is {x, y, z, rotation degree, xaxis, yaxis, zaxis}
-// fixaray is used for stroing control points while using quaternion
-//       the format is {x, y, z, rotation degree on xaxis, rotation degree on yaxis,rotation degree on zaxis}
-// point_num is the number of contritical points
-//       if you would like to add or remove points from qaray or fixaray, please remember to modify this value
-// 
+// INPUT CAN BE MODIFY HERE!!!
 // 2D flocking system
 // ==================================
 
 //allocate memory for 10 boids
-int boidnum = 2;
-float boid[2][15] = {0};//boid matrix
-float bv[2][2] = {0};//boid velocity on x and y
-float bf[2][2] = {0};//force on boid
-float rs = 4; // radius of seperation detection. 
-float rc = 11; // radius of cohesion
-
-float point_num = 6;
-//geometric point for quaternion
-float qaray[6][7] = { {-8.0, -6.0, -25.0, 0, 1, 0, 0}, {-2.0, -5.0, -17.0, 1, 0, 1, 0}, {5.5, -2.0, -13.0, 1, 0, 0, 1},{2.0, 3.0, -15.0, 1, 1, 0, 0},
-	{-3.5, 6.5, -20.0, 1, 0, 1, 0}, {10.0, 6.0, -15.0, 0, 0, 1, 0} };
-
-//geometric point for fixed angle
-float fixaray[6][6] = { {-8.0, -6.0, -25.0, 30, 0, 80}, {-2.0, -5.0, -17.0, 0, 180, 0}, {5.5, -2.0, -13.0, 0, 50, 90},{2.0, 3.0, -15.0, 60, 40, 0},
-	{-3.5, 6.5, -20.0, 180, 0, 90}, {10.0, 6.0, -15.0, 0, 90, 30} };
-
-float dt = 0.01; //dt is the spcing to used in the animation
+int boidnum = 20;
+float boid[20][15] = {0};//boid matrix
+float bv[20][2] = {0};//boid velocity on x and y
+float bf[20][2] = {0};//force on boid
+float rs = 2; // radius of seperation detection. 
+float rc = 5; // radius of cohesion
+float rv = 3; // radius of velocity match
+float dt = 0.01f; //dt is the spcing to used in the animation
 
 //rotation matrix
 float M[16] = { 0 };
-
-//t is the value in both catmull-rom and b spline function.
-float t = 0.0;
-float x, y, z; //current location for the object
-
-//Matrix for Calculating Catmull Rom, using 1/2 as 'a'
-float mCR[4][4] = { {-0.5, 1.5, -1.5, 0.5}, {1.0, -2.5, 2.0, -0.5},
-	{-0.5, 0.0, 0.5, 0.0}, {0.0, 1.0, 0.0, 0.0} };
-//Matrix for Calculating B-spline
-float mB[4][4] = { {-1.0, 3.0, -3.0, 1.0}, {3.0, -6.0, 3.0, 0.0},
-	{-3.0, 0.0, 3.0, 0.0}, {1.0, 4.0, 1.0, 0.0} };
+float Mf[16] = { 0 };
 
 // screen size
 int g_screenWidth = 0;
@@ -69,6 +39,23 @@ int g_screenHeight = 0;
 
 // frame index
 int g_frameIndex = 0;
+
+void drawfood() {
+
+	glPushMatrix();
+	M[0] = 1.0f;
+	M[5] = 1.0f;
+	M[10] = 1.0f;
+	M[15] = 1.0f;
+	M[12] = boid[bn][12];
+	M[13] = boid[bn][13];
+	M[14] = boid[bn][14];
+	glMultMatrixf(M);
+	//glTranslatef(x, y, z);
+	glutSolidCube(0.5);
+	glPopMatrix();
+
+}
 
 void drawBoids(int bn) {
 
@@ -83,11 +70,9 @@ void drawBoids(int bn) {
 	bv[bn][1] = bv[bn][1] + ay * 0.01;
 
 	//update location
-	float x = boid[bn][12] + bv[bn][0] * 0.01;
-	float y = boid[bn][13] + bv[bn][1] * 0.01;
+	boid[bn][12] = boid[bn][12] + bv[bn][0] * 0.01;
+	boid[bn][13] = boid[bn][13] + bv[bn][1] * 0.01;
 
-	boid[bn][12] = x;
-	boid[bn][13] = y;
 
 
 	glPushMatrix();
@@ -100,7 +85,7 @@ void drawBoids(int bn) {
 	M[14] = boid[bn][14];
 	glMultMatrixf(M);
 	//glTranslatef(x, y, z);
-	glutSolidSphere(0.5, 20, 20);
+	glutSolidSphere(0.3, 20, 20);
 	glPopMatrix();
 }
 
@@ -111,14 +96,41 @@ void separate(int bn) {
 			float distx = boid[bn][12] - boid[i][12];
 			float disty = boid[bn][13] - boid[i][13];
 			float distxy = sqrtf(distx * distx + disty * disty);
-			if (distxy <= rs) {
-				bf[bn][0] += 4 * (boid[bn][12] - boid[i][12] / (boid[bn][12] - boid[i][12]) * (boid[bn][12] - boid[i][12]));
-				bf[bn][1] += 4 * (boid[bn][13] - boid[i][13] / (boid[bn][13] - boid[i][13]) * (boid[bn][13] - boid[i][13]));
+			if (distxy < rs) {
+				//printf("sep");
+				//the closer two boid to each other, the more force will apply on them
+				bf[bn][0] +=  8 *(boid[bn][12] - boid[i][12] / (boid[bn][12] - boid[i][12]) * (boid[bn][12] - boid[i][12])) ;
+				bf[bn][1] +=  8 *(boid[bn][13] - boid[i][13] / (boid[bn][13] - boid[i][13]) * (boid[bn][13] - boid[i][13])) ;
 				
 			}
 		}
 
 	}
+}
+
+void Velocitymatch(int bn) {
+	//boids'velocity will move towards the average velocity in a specifix radius
+	float vxsum = 0;
+	float vysum = 0;
+	float vx = 0;
+	float vy = 0;
+	int num = 0;
+	for (int i = 0; i < boidnum; i++) {
+		float distx = boid[bn][12] - boid[i][12];
+		float disty = boid[bn][13] - boid[i][13];
+		float distxy = sqrtf(distx * distx + disty * disty);
+		if (distxy < rv) {
+			vxsum += bv[i][0];
+			vysum += bv[i][1];
+			num++;
+		}
+		//printf("vxsum %f, vysum%f, num %d", vxsum, vysum, num);
+	}
+	vx = vxsum / num;
+	vy = vysum / num;
+	//printf("vx: %f, bv[%d][0]: %f", vx, bn, bv[bn][0]);
+	bf[bn][0] += (vx - bv[bn][0]);
+	bf[bn][1] += (vy - bv[bn][1]);
 }
 
 void cohesion(int bn) {
@@ -141,9 +153,10 @@ void cohesion(int bn) {
 
 	float targetx = targetxt / num;
 	float targety = targetyt / num;
-
-	bf[bn][0] += targetx - boid[bn][12];
-	bf[bn][1] += targety - boid[bn][13];
+	//printf("targetx: %f cureentx:%f \n", targetx, boid[bn][12]);
+	//the more far away those boid, ther more they will be attract to the center
+	bf[bn][0] += ( targetx - boid[bn][12])/2;
+	bf[bn][1] +=  (targety - boid[bn][13])/2;
 
 
 }
@@ -153,17 +166,31 @@ void cohesion(int bn) {
 //================================
 void init(void) {
 	// init something before main loop...
-		//init 10 boids location;
+		//init boids location;
+	
 	for (int i = 0; i < boidnum; i++) {
 		boid[i][12] = rand() % 19 + (-9); //limit by windows width x in range(-9, 9)
 		boid[i][13] = rand() % 15 + (-7);//limit by windows height y in range(-7, 7);
 		boid[i][14] = -30;//make it 2d
-		bv[i][0] = 0;
+		bv[i][0] = 0;//0;
 			//rand() % 11 + (-5); //limit speed on x in range (-5, 5)
-		bv[i][1] = 0;
+		bv[i][1] = 0; //0;
 			//rand() % 11 + (-5); //limit speed on y in range (-5, 5)
-		//std::cout << i;
 	}
+	/***
+	boid[0][12] = 0;
+	boid[1][12] = 2;
+	boid[0][13] = 3;
+	boid[1][13] = 2;
+	boid[0][14] = -30;
+	boid[1][14] = -30;
+	bv[0][0] = 0;
+	bv[1][0] = 0;
+	bv[0][1] = 0;
+	bv[1][1] = 0;
+	***/
+
+
 	
 }
 
@@ -175,94 +202,6 @@ void update(void) {
 		bf[i][0] = 0;
 		bf[i][1] = 0;
 	}
-	/***
-	// catmull-rom + fixed
-	if (spline_opt == 1 && rotation_opt == 1) {
-		//if get input 1, choose catmull spline, increase t
-		if (t < point_num - 3) {
-			float curgeo[6];
-			for (int i = 0; i < 6; i++) {
-				float G[4] = { fixaray[(int)t][i], fixaray[(int)t + 1][i] ,fixaray[(int)t + 2][i] ,fixaray[(int)t + 3][i] };
-				curgeo[i] = matrixTMG(mCR, G);
-			}
-			x = curgeo[0];
-			y = curgeo[1];
-			z = curgeo[2];
-			fixedangle(curgeo[3], curgeo[4], curgeo[5]);
-			t = t + dt;
-		}
-
-	}
-	//catmull-rom + quaternion
-	else if (spline_opt == 1 && rotation_opt == 2) {
-		//if get input 1, choose catmull spline, increase t
-		if (t < point_num - 3) {
-			float curgeo[7];
-			for (int i = 0; i < 7; i++) {
-				float G[4] = { qaray[(int)t][i], qaray[(int)t + 1][i] ,qaray[(int)t + 2][i] ,qaray[(int)t + 3][i] };
-				curgeo[i] = matrixTMG(mCR, G);
-			}
-			x = curgeo[0];
-			y = curgeo[1];
-			z = curgeo[2];
-
-			//normalize quanternion
-			float wxyz_2 = curgeo[3] * curgeo[3] + curgeo[4] * curgeo[4] + curgeo[5] * curgeo[5] + curgeo[6] * curgeo[6];
-			if (wxyz_2 != 1) {
-				float wxyz = sqrt(fabs(wxyz_2));
-				for (int i = 3; i < 7; i++) {
-					curgeo[i] = curgeo[i] / wxyz;
-				}
-			}
-			//get quanternion rotation matrix
-			quaternion(curgeo[3], curgeo[4], curgeo[5], curgeo[6]);
-			t = t + dt;
-		}
-
-
-	}
-	//Bspline + fixed angel
-	else if (spline_opt == 2 && rotation_opt == 1) {
-		if (t < point_num - 3) {
-			float curgeo[6];
-			for (int i = 0; i < 6; i++) {
-				float G[4] = { fixaray[(int)t][i], fixaray[(int)t + 1][i] ,fixaray[(int)t + 2][i] ,fixaray[(int)t + 3][i] };
-				curgeo[i] = matrixTMG(mB, G);
-			}
-			x = curgeo[0];
-			y = curgeo[1];
-			z = curgeo[2];
-			fixedangle(curgeo[3], curgeo[4], curgeo[5]);
-			t = t + dt;
-		}
-	}
-	//Bspline + quaternion
-	else if (spline_opt == 2 && rotation_opt == 2) {
-		//get all geometric point using b-spline
-		if (t < point_num - 3) {
-			float curgeo[7];
-			for (int i = 0; i < 7; i++) {
-				float G[4] = { qaray[(int)t][i], qaray[(int)t + 1][i] ,qaray[(int)t + 2][i] ,qaray[(int)t + 3][i] };
-				curgeo[i] = matrixTMG(mB, G);
-			}
-			x = curgeo[0];
-			y = curgeo[1];
-			z = curgeo[2];
-
-			//normalize quanternion
-			float wxyz_2 = curgeo[3] * curgeo[3] + curgeo[4] * curgeo[4] + curgeo[5] * curgeo[5] + curgeo[6] * curgeo[6];
-			if (wxyz_2 != 1) {
-				float wxyz = sqrt(fabs(wxyz_2));
-				for (int i = 3; i < 7; i++) {
-					curgeo[i] = curgeo[i] / wxyz;
-				}
-			}
-			//get quanternion rotation matrix
-			quaternion(curgeo[3], curgeo[4], curgeo[5], curgeo[6]);
-			t = t + dt;
-		}
-	}
-	***/
 }
 
 //===============================
@@ -324,10 +263,12 @@ void render(void) {
 	glLoadIdentity();
 	//glTranslatef(0.0, 0.0, -20);
 	//displayTeapot();
+	drawfood();
 	for (int i = 0; i < boidnum; i++) {
 		//printf("before x, bf[0][0] : %f \n", bf[0][0]);
 		cohesion(i);
 		separate(i);
+		Velocitymatch(i);
 		drawBoids(i);
 	}
 	// disable lighting
