@@ -33,6 +33,9 @@ float dt = 0.01f; //dt is the spcing to used in the animation
 float M[16] = { 0 };
 float Mf[16] = { 0 };
 
+float fvx;
+float fvy;
+
 // screen size
 int g_screenWidth = 0;
 int g_screenHeight = 0;
@@ -42,14 +45,31 @@ int g_frameIndex = 0;
 
 void drawfood() {
 
+	//food will only show up in a specific range
+	if (Mf[12] > 9) {
+		fvx = -(rand() % 5 + 1); //random a negative velocity
+	}
+	if (Mf[12] < -9) {
+		fvx = rand() % 5 + 1;
+	}
+	if (Mf[13] > 7) {
+		fvy = -(rand() % 5 + 1);
+	}
+	if (Mf[13] < -7) {
+		fvy = rand() % 5 + 1;
+	}
+	//update location
+	Mf[12] = Mf[12] + fvx * 0.01;
+	Mf[13] = Mf[13] + fvy * 0.01;
+
 	glPushMatrix();
 	M[0] = 1.0f;
 	M[5] = 1.0f;
 	M[10] = 1.0f;
 	M[15] = 1.0f;
-	M[12] = boid[bn][12];
-	M[13] = boid[bn][13];
-	M[14] = boid[bn][14];
+	M[12] = Mf[12];
+	M[13] = Mf[13];
+	M[14] = Mf[14];
 	glMultMatrixf(M);
 	//glTranslatef(x, y, z);
 	glutSolidCube(0.5);
@@ -166,7 +186,15 @@ void cohesion(int bn) {
 //================================
 void init(void) {
 	// init something before main loop...
-		//init boids location;
+	
+	//init food
+	Mf[12] = rand() % 19 + (-9);
+	Mf[13] = rand() % 15 + (-7);//limit by windows height y in range(-7, 7);
+	Mf[14] = -30;//make it 2d
+	fvx = rand() % 5 + (-5);
+	fvy = rand() % 5 + (-5);
+	
+	//init boids location;
 	
 	for (int i = 0; i < boidnum; i++) {
 		boid[i][12] = rand() % 19 + (-9); //limit by windows width x in range(-9, 9)
